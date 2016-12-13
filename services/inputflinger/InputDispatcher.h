@@ -161,6 +161,8 @@ struct InputTarget {
     // (ignored for KeyEvents)
     float scaleFactor;
 
+    bool inThumbMode;
+
     // The subset of pointer ids to include in motion events dispatched to this input target
     // if FLAG_SPLIT is set.
     BitSet32 pointerIds;
@@ -548,12 +550,17 @@ private:
         float scaleFactor;
         nsecs_t deliveryTime; // time when the event was actually delivered
 
+        bool inThumbMode;
+
         // Set to the resolved action and flags when the event is enqueued.
         int32_t resolvedAction;
         int32_t resolvedFlags;
 
         DispatchEntry(EventEntry* eventEntry,
                 int32_t targetFlags, float xOffset, float yOffset, float scaleFactor);
+
+        DispatchEntry(EventEntry* eventEntry,
+                int32_t targetFlags, float xOffset, float yOffset, float scaleFactor, bool inThumbMode);
         ~DispatchEntry();
 
         inline bool hasForegroundTarget() const {

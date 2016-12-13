@@ -1579,6 +1579,7 @@ void InputDispatcher::addWindowTargetLocked(const sp<InputWindowHandle>& windowH
     target.yOffset = - windowInfo->frameTop;
     target.scaleFactor = windowInfo->scaleFactor;
     target.pointerIds = pointerIds;
+    target.inThumbMode = windowInfo->inThumbMode;
 }
 
 void InputDispatcher::addMonitoringTargetsLocked(Vector<InputTarget>& inputTargets) {
@@ -1881,7 +1882,7 @@ void InputDispatcher::enqueueDispatchEntryLocked(
     // Enqueue a new dispatch entry onto the outbound queue for this connection.
     DispatchEntry* dispatchEntry = new DispatchEntry(eventEntry, // increments ref
             inputTargetFlags, inputTarget->xOffset, inputTarget->yOffset,
-            inputTarget->scaleFactor);
+            inputTarget->scaleFactor, inputTarget->inThumbMode);
 
     // Apply target flags and update the connection's input state.
     switch (eventEntry->type) {
@@ -2030,7 +2031,7 @@ void InputDispatcher::startDispatchCycleLocked(nsecs_t currentTime,
                     xOffset, yOffset, motionEntry->xPrecision, motionEntry->yPrecision,
                     motionEntry->downTime, motionEntry->eventTime,
                     motionEntry->pointerCount, motionEntry->pointerProperties,
-                    usingCoords);
+                    usingCoords, dispatchEntry->inThumbMode, scaleFactor);
             break;
         }
 
@@ -3067,8 +3068,9 @@ bool InputDispatcher::transferTouchFocus(const sp<InputChannel>& fromChannel,
                 if (touchedWindow.windowHandle == fromWindowHandle) {
                     int32_t oldTargetFlags = touchedWindow.targetFlags;
                     BitSet32 pointerIds = touchedWindow.pointerIds;
-
-                    state.windows.removeAt(i);
+                    if(fromWindowHandle->getInfo()->name.find(String8("com.android.calendar.AllInOneActivity"))<= 0){
+                        state.windows.removeAt(i);
+                    }
 
                     int32_t newTargetFlags = oldTargetFlags
                             & (InputTarget::FLAG_FOREGROUND
@@ -3096,9 +3098,11 @@ Found:
             sp<Connection> toConnection = mConnectionsByFd.valueAt(toConnectionIndex);
 
             fromConnection->inputState.copyPointerStateTo(toConnection->inputState);
-            CancelationOptions options(CancelationOptions::CANCEL_POINTER_EVENTS,
-                    "transferring touch focus from this window to another window");
-            synthesizeCancelationEventsForConnectionLocked(fromConnection, options);
+            if(fromWindowHandle->getInfo()->name.find(String8("com.android.calendar.AllInOneActivity"))<= 0){
+               CancelationOptions options(CancelationOptions::CANCEL_POINTER_EVENTS,
+                       "transferring touch focus from this window to another window");
+               synthesizeCancelationEventsForConnectionLocked(fromConnection, options);
+            }
         }
 
 #if DEBUG_FOCUS
@@ -3193,7 +3197,7 @@ void InputDispatcher::dumpDispatchStateLocked(String8& dump) {
             dump.appendFormat(INDENT2 "%zu: name='%s', displayId=%d, "
                     "paused=%s, hasFocus=%s, hasWallpaper=%s, "
                     "visible=%s, canReceiveKeys=%s, flags=0x%08x, type=0x%08x, layer=%d, "
-                    "frame=[%d,%d][%d,%d], scale=%f, "
+                    "frame=[%d,%d][%d,%d], scale=%f, inThumbMode=%s,"
                     "touchableRegion=",
                     i, windowInfo->name.string(), windowInfo->displayId,
                     toString(windowInfo->paused),
@@ -3205,7 +3209,8 @@ void InputDispatcher::dumpDispatchStateLocked(String8& dump) {
                     windowInfo->layer,
                     windowInfo->frameLeft, windowInfo->frameTop,
                     windowInfo->frameRight, windowInfo->frameBottom,
-                    windowInfo->scaleFactor);
+                    windowInfo->scaleFactor,
+                    toString(windowInfo->inThumbMode));
             dumpRegion(dump, windowInfo->touchableRegion);
             dump.appendFormat(", inputFeatures=0x%08x", windowInfo->inputFeatures);
             dump.appendFormat(", ownerPid=%d, ownerUid=%d, dispatchingTimeout=%0.3fms\n",
@@ -4011,7 +4016,16 @@ InputDispatcher::DispatchEntry::DispatchEntry(EventEntry* eventEntry,
         int32_t targetFlags, float xOffset, float yOffset, float scaleFactor) :
         seq(nextSeq()),
         eventEntry(eventEntry), targetFlags(targetFlags),
-        xOffset(xOffset), yOffset(yOffset), scaleFactor(scaleFactor),
+        xOffset(xOffset), yOffset(yOffset), scaleFactor(scaleFactor),inThumbMode(false),
+        deliveryTime(0), resolvedAction(0), resolvedFlags(0) {
+    eventEntry->refCount += 1;
+}
+
+InputDispatcher::DispatchEntry::DispatchEntry(EventEntry* eventEntry,
+        int32_t targetFlags, float xOffset, float yOffset, float scaleFactor, bool inThumbMode) :
+        seq(nextSeq()),
+        eventEntry(eventEntry), targetFlags(targetFlags),
+        xOffset(xOffset), yOffset(yOffset), scaleFactor(scaleFactor),inThumbMode(inThumbMode),
         deliveryTime(0), resolvedAction(0), resolvedFlags(0) {
     eventEntry->refCount += 1;
 }

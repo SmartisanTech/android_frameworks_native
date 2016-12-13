@@ -300,16 +300,18 @@ status_t InputPublisher::publishMotionEvent(
         nsecs_t eventTime,
         uint32_t pointerCount,
         const PointerProperties* pointerProperties,
-        const PointerCoords* pointerCoords) {
+        const PointerCoords* pointerCoords,
+        bool inThumbMode,
+        float scaleFactor) {
 #if DEBUG_TRANSPORT_ACTIONS
     ALOGD("channel '%s' publisher ~ publishMotionEvent: seq=%u, deviceId=%d, source=0x%x, "
             "action=0x%x, actionButton=0x%08x, flags=0x%x, edgeFlags=0x%x, "
-            "metaState=0x%x, buttonState=0x%x, xOffset=%f, yOffset=%f, "
+            "metaState=0x%x, buttonState=0x%x, xOffset=%f, yOffset=%f, scaleFactor=%f, inThumbMode=%s, "
             "xPrecision=%f, yPrecision=%f, downTime=%lld, eventTime=%lld, "
             "pointerCount=%" PRIu32,
             mChannel->getName().string(), seq,
             deviceId, source, action, actionButton, flags, edgeFlags, metaState, buttonState,
-            xOffset, yOffset, xPrecision, yPrecision, downTime, eventTime, pointerCount);
+            xOffset, yOffset, scaleFactor, toString(inThumbMode), xPrecision, yPrecision, downTime, eventTime, pointerCount);
 #endif
 
     if (!seq) {
@@ -341,6 +343,8 @@ status_t InputPublisher::publishMotionEvent(
     msg.body.motion.downTime = downTime;
     msg.body.motion.eventTime = eventTime;
     msg.body.motion.pointerCount = pointerCount;
+    msg.body.motion.inThumbMode = inThumbMode;
+    msg.body.motion.scaleFactor = scaleFactor;
     for (uint32_t i = 0; i < pointerCount; i++) {
         msg.body.motion.pointers[i].properties.copyFrom(pointerProperties[i]);
         msg.body.motion.pointers[i].coords.copyFrom(pointerCoords[i]);
@@ -931,7 +935,9 @@ void InputConsumer::initializeMotionEvent(MotionEvent* event, const InputMessage
             msg->body.motion.eventTime,
             pointerCount,
             pointerProperties,
-            pointerCoords);
+            pointerCoords,
+            msg->body.motion.inThumbMode,
+            msg->body.motion.scaleFactor);
 }
 
 void InputConsumer::addSample(MotionEvent* event, const InputMessage* msg) {

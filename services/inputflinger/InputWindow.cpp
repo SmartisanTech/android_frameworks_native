@@ -36,6 +36,9 @@ bool InputWindowInfo::touchableRegionContainsPoint(int32_t x, int32_t y) const {
 }
 
 bool InputWindowInfo::frameContainsPoint(int32_t x, int32_t y) const {
+    if(layoutParamsType == TYPE_SIDEBAR_TOOLS){
+        return touchableRegion.contains(x,y);
+    }
     return x >= frameLeft && x < frameRight
             && y >= frameTop && y < frameBottom;
 }

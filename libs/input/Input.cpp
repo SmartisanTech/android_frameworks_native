@@ -247,6 +247,49 @@ void MotionEvent::initialize(
     mSampleEventTimes.clear();
     mSamplePointerCoords.clear();
     addSample(eventTime, pointerCoords);
+    mInThumbMode = false;
+    mScaleFactor = 1;
+}
+
+void MotionEvent::initialize(
+        int32_t deviceId,
+        int32_t source,
+        int32_t action,
+        int32_t actionButton,
+        int32_t flags,
+        int32_t edgeFlags,
+        int32_t metaState,
+        int32_t buttonState,
+        float xOffset,
+        float yOffset,
+        float xPrecision,
+        float yPrecision,
+        nsecs_t downTime,
+        nsecs_t eventTime,
+        size_t pointerCount,
+        const PointerProperties* pointerProperties,
+        const PointerCoords* pointerCoords,
+        bool inThumbMode,
+        float scaleFactor) {
+    InputEvent::initialize(deviceId, source);
+    mAction = action;
+    mActionButton = actionButton;
+    mFlags = flags;
+    mEdgeFlags = edgeFlags;
+    mMetaState = metaState;
+    mButtonState = buttonState;
+    mXOffset = xOffset;
+    mYOffset = yOffset;
+    mXPrecision = xPrecision;
+    mYPrecision = yPrecision;
+    mDownTime = downTime;
+    mPointerProperties.clear();
+    mPointerProperties.appendArray(pointerProperties, pointerCount);
+    mSampleEventTimes.clear();
+    mSamplePointerCoords.clear();
+    addSample(eventTime, pointerCoords);
+    mInThumbMode = inThumbMode;
+    mScaleFactor = scaleFactor;
 }
 
 void MotionEvent::copyFrom(const MotionEvent* other, bool keepHistory) {
@@ -263,6 +306,8 @@ void MotionEvent::copyFrom(const MotionEvent* other, bool keepHistory) {
     mYPrecision = other->mYPrecision;
     mDownTime = other->mDownTime;
     mPointerProperties = other->mPointerProperties;
+    mInThumbMode = other->mInThumbMode;
+    mScaleFactor= other->mScaleFactor;
 
     if (keepHistory) {
         mSampleEventTimes = other->mSampleEventTimes;
@@ -290,7 +335,26 @@ const PointerCoords* MotionEvent::getRawPointerCoords(size_t pointerIndex) const
 }
 
 float MotionEvent::getRawAxisValue(int32_t axis, size_t pointerIndex) const {
-    return getRawPointerCoords(pointerIndex)->getAxisValue(axis);
+    float value = getRawPointerCoords(pointerIndex)->getAxisValue(axis);
+	if(mInThumbMode==false || mScaleFactor==0){
+        return value;
+	}
+    switch (axis) {
+    case AMOTION_EVENT_AXIS_X:
+        if(value <= (-mXOffset)){
+            return value/mScaleFactor;
+        }else{
+            return (-mXOffset)/mScaleFactor + (value+mXOffset);
+        }
+    case AMOTION_EVENT_AXIS_Y:
+        if(value <= (-mYOffset)){
+            return value/mScaleFactor;
+        }else{
+            return (-mYOffset)/mScaleFactor+ (value+mYOffset);
+        }
+    }
+    return value;
+
 }
 
 float MotionEvent::getAxisValue(int32_t axis, size_t pointerIndex) const {
@@ -311,7 +375,26 @@ const PointerCoords* MotionEvent::getHistoricalRawPointerCoords(
 
 float MotionEvent::getHistoricalRawAxisValue(int32_t axis, size_t pointerIndex,
         size_t historicalIndex) const {
-    return getHistoricalRawPointerCoords(pointerIndex, historicalIndex)->getAxisValue(axis);
+    float value = getHistoricalRawPointerCoords(pointerIndex, historicalIndex)->getAxisValue(axis);
+	if(mInThumbMode==false || mScaleFactor==0){
+        return value;
+	}
+
+    switch (axis) {
+    case AMOTION_EVENT_AXIS_X:
+        if(value <= (-mXOffset)){
+            return value/mScaleFactor;
+        }else{
+            return (-mXOffset)/mScaleFactor + (value+mXOffset);
+        }
+    case AMOTION_EVENT_AXIS_Y:
+        if(value <= (-mYOffset)){
+            return value/mScaleFactor;
+        }else{
+            return (-mYOffset)/mScaleFactor + (value+mYOffset);
+        }
+    }
+    return value;
 }
 
 float MotionEvent::getHistoricalAxisValue(int32_t axis, size_t pointerIndex,
@@ -442,6 +525,8 @@ status_t MotionEvent::readFromParcel(Parcel* parcel) {
     mXPrecision = parcel->readFloat();
     mYPrecision = parcel->readFloat();
     mDownTime = parcel->readInt64();
+    mInThumbMode = (parcel->readInt32() != 0) ? true:false;
+    mScaleFactor = parcel->readFloat();
 
     mPointerProperties.clear();
     mPointerProperties.setCapacity(pointerCount);
@@ -490,6 +575,8 @@ status_t MotionEvent::writeToParcel(Parcel* parcel) const {
     parcel->writeFloat(mXPrecision);
     parcel->writeFloat(mYPrecision);
     parcel->writeInt64(mDownTime);
+    parcel->writeInt32(mInThumbMode ? 1:0);
+    parcel->writeFloat(mScaleFactor);
 
     for (size_t i = 0; i < pointerCount; i++) {
         const PointerProperties& properties = mPointerProperties.itemAt(i);

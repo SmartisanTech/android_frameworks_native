@@ -95,6 +95,8 @@ struct InputMessage {
             float xPrecision;
             float yPrecision;
             uint32_t pointerCount;
+            bool inThumbMode;
+            float scaleFactor;
             // Note that PointerCoords requires 8 byte alignment.
             struct Pointer {
                 PointerProperties properties;
@@ -246,7 +248,9 @@ public:
             nsecs_t eventTime,
             uint32_t pointerCount,
             const PointerProperties* pointerProperties,
-            const PointerCoords* pointerCoords);
+            const PointerCoords* pointerCoords,
+            bool inThumbMode,
+            float scaleFactor);
 
     /* Receives the finished signal from the consumer in reply to the original dispatch signal.
      * If a signal was received, returns the message sequence number,

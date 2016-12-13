@@ -102,6 +102,7 @@ struct InputWindowInfo {
         TYPE_VOLUME_OVERLAY = FIRST_SYSTEM_WINDOW+20,
         TYPE_BOOT_PROGRESS = FIRST_SYSTEM_WINDOW+21,
         TYPE_MAGNIFICATION_OVERLAY = FIRST_SYSTEM_WINDOW+22,
+        TYPE_SIDEBAR_TOOLS = FIRST_SYSTEM_WINDOW+34,
         LAST_SYSTEM_WINDOW      = 2999,
     };
 
@@ -132,6 +133,7 @@ struct InputWindowInfo {
     int32_t ownerUid;
     int32_t inputFeatures;
     int32_t displayId;
+    bool inThumbMode;
 
     void addTouchableRegion(const Rect& region);
 
